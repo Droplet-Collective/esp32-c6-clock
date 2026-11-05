@@ -1,0 +1,11 @@
+/.espressif/
+
+/backup/
+
+/app/main/wifi_credentials.h
+
+build/
+managed_components/
+sdkconfig
+sdkconfig.old
+.cache/
