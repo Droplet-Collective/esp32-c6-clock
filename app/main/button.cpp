@@ -12,7 +12,7 @@ constexpr gpio_num_t BUTTON_PIN = GPIO_NUM_18;
 constexpr TickType_t DEBOUNCE_TICKS = pdMS_TO_TICKS(30);
 constexpr TickType_t RELEASE_POLL_TICKS = pdMS_TO_TICKS(10);
 
-constexpr const char *TAG = "btton";
+constexpr const char *TAG = "button";
 
 TaskHandle_t s_task;
 PressCallback s_cb;
