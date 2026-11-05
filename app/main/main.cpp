@@ -6,6 +6,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_lvgl_port.h"
+#include "imu.hpp"
 #include "time_sync.hpp"
 #include "wifi.hpp"
 
@@ -15,6 +16,7 @@ constexpr const char *TIME_ZONE = "JST-9";
 constexpr const char *TAG = "app";
 
 struct Ui {
+    lv_display_t *disp = nullptr;
     lv_obj_t *wifi = nullptr;
     lv_obj_t *time = nullptr;
     lv_obj_t *date = nullptr;
@@ -105,6 +107,23 @@ void on_wifi_status(wifi::Status status, const char *detail, void *ctx)
     }
 }
 
+void on_orientation(imu::Orientation orientation, void *ctx)
+{
+    auto &ui = *static_cast<Ui *>(ctx);
+    ESP_LOGI(TAG, "orientation: %s", imu::name(orientation));
+    lv_display_rotation_t rotation;
+    switch (orientation) {
+    case imu::Orientation::Up:    rotation = LV_DISPLAY_ROTATION_0;   break;
+    case imu::Orientation::Right: rotation = LV_DISPLAY_ROTATION_90;  break;
+    case imu::Orientation::Left:  rotation = LV_DISPLAY_ROTATION_270; break;
+    default:                      return;
+    }
+    if (lvgl_port_lock(0)) {
+        lv_display_set_rotation(ui.disp, rotation);
+        lvgl_port_unlock();
+    }
+}
+
 }
 
 extern "C" void app_main()
@@ -117,6 +136,7 @@ extern "C" void app_main()
         ESP_LOGE(TAG, "display init failed");
         return;
     }
+    s_ui.disp = disp;
     if (lvgl_port_lock(0)) {
         ui_create(s_ui);
         lv_timer_create(clock_tick, 100, &s_ui);
@@ -125,6 +145,7 @@ extern "C" void app_main()
     }
     display::backlight_on();
 
+    ESP_ERROR_CHECK(imu::start(on_orientation, &s_ui));
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(time_sync::start());
     ESP_ERROR_CHECK(wifi::start(on_wifi_status, &s_ui));

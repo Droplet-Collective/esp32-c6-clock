@@ -84,6 +84,7 @@ lv_display_t *init()
     disp_cfg.color_format = LV_COLOR_FORMAT_RGB565;
     disp_cfg.flags.buff_dma = true;
     disp_cfg.flags.swap_bytes = true;
+    disp_cfg.flags.sw_rotate = true;
     return lvgl_port_add_disp(&disp_cfg);
 }
 
