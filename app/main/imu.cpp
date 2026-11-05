@@ -257,7 +257,6 @@ esp_err_t start(OrientationCallback cb, void *ctx)
 
     ESP_RETURN_ON_ERROR(sensor_init(), TAG, "sensor init");
     ESP_RETURN_ON_FALSE(xTaskCreate(imu_task, "imu", 3072, nullptr, 5, &s_task) == pdPASS, ESP_ERR_NO_MEM, TAG, "task");
-    ESP_RETURN_ON_ERROR(gpio_install_isr_service(0), TAG, "ISR service");
     return gpio_isr_handler_add(IMU_PIN_INT1, int1_isr, nullptr);
 }
 

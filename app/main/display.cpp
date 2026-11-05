@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "driver/gpio.h"
+#include "driver/ledc.h"
 #include "driver/spi_master.h"
 #include "esp_err.h"
 #include "esp_lcd_panel_io.h"
@@ -24,14 +25,36 @@ constexpr gpio_num_t LCD_PIN_RST = GPIO_NUM_4;
 constexpr gpio_num_t LCD_PIN_BL = GPIO_NUM_6;
 constexpr gpio_num_t LCD_PIN_CS = GPIO_NUM_11;
 constexpr int LCD_DRAW_LINES = 40;
+constexpr ledc_mode_t BL_MODE = LEDC_LOW_SPEED_MODE;
+constexpr ledc_timer_t BL_TIMER = LEDC_TIMER_0;
+constexpr ledc_channel_t BL_CHANNEL = LEDC_CHANNEL_0;
+constexpr ledc_timer_bit_t BL_RESOLUTION = LEDC_TIMER_10_BIT;
+constexpr uint32_t BL_FREQ_HZ = 20000;
+constexpr uint32_t BL_DUTY_MAX = (1U << BL_RESOLUTION) - 1;
+
+void backlight_init()
+{
+    ledc_timer_config_t timer_cfg = {};
+    timer_cfg.speed_mode = BL_MODE;
+    timer_cfg.duty_resolution = BL_RESOLUTION;
+    timer_cfg.timer_num = BL_TIMER;
+    timer_cfg.freq_hz = BL_FREQ_HZ;
+    timer_cfg.clk_cfg = LEDC_AUTO_CLK;
+    ESP_ERROR_CHECK(ledc_timer_config(&timer_cfg));
+
+    ledc_channel_config_t channel_cfg = {};
+    channel_cfg.gpio_num = LCD_PIN_BL;
+    channel_cfg.speed_mode = BL_MODE;
+    channel_cfg.channel = BL_CHANNEL;
+    channel_cfg.timer_sel = BL_TIMER;
+    channel_cfg.duty = 0;
+    ESP_ERROR_CHECK(ledc_channel_config(&channel_cfg));
+    ESP_ERROR_CHECK(ledc_fade_func_install(0));
+}
 
 void lcd_init(esp_lcd_panel_io_handle_t &io, esp_lcd_panel_handle_t &panel)
 {
-    gpio_config_t bl_cfg = {};
-    bl_cfg.pin_bit_mask = 1ULL << LCD_PIN_BL;
-    bl_cfg.mode = GPIO_MODE_OUTPUT;
-    ESP_ERROR_CHECK(gpio_config(&bl_cfg));
-    ESP_ERROR_CHECK(gpio_set_level(LCD_PIN_BL, 0));
+    backlight_init();
 
     spi_bus_config_t bus_cfg = {};
     bus_cfg.mosi_io_num = LCD_PIN_MOSI;
@@ -88,9 +111,10 @@ lv_display_t *init()
     return lvgl_port_add_disp(&disp_cfg);
 }
 
-void backlight_on()
+void set_brightness(uint8_t percent)
 {
-    ESP_ERROR_CHECK(gpio_set_level(LCD_PIN_BL, 1));
+    const uint32_t p = percent > 100 ? 100 : percent;
+    ESP_ERROR_CHECK(ledc_set_duty_and_update(BL_MODE, BL_CHANNEL, BL_DUTY_MAX * p / 100, 0));
 }
 
 }

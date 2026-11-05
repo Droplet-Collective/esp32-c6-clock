@@ -2,7 +2,9 @@
 #include <ctime>
 #include <sys/time.h>
 
+#include "button.hpp"
 #include "display.hpp"
+#include "driver/gpio.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_lvgl_port.h"
@@ -14,6 +16,8 @@ namespace {
 
 constexpr const char *TIME_ZONE = "JST-9";
 constexpr const char *TAG = "app";
+constexpr uint8_t BRIGHTNESS_HIGH = 100;
+constexpr uint8_t BRIGHTNESS_LOW = 20;
 
 struct Ui {
     lv_display_t *disp = nullptr;
@@ -24,6 +28,7 @@ struct Ui {
 };
 
 Ui s_ui;
+bool s_bright = true;
 
 void ui_create(Ui &ui)
 {
@@ -124,6 +129,14 @@ void on_orientation(imu::Orientation orientation, void *ctx)
     }
 }
 
+void on_button(void *)
+{
+    s_bright = !s_bright;
+    const uint8_t percent = s_bright ? BRIGHTNESS_HIGH : BRIGHTNESS_LOW;
+    ESP_LOGI(TAG, "brightness: %u%%", percent);
+    display::set_brightness(percent);
+}
+
 }
 
 extern "C" void app_main()
@@ -143,7 +156,9 @@ extern "C" void app_main()
         lv_refr_now(disp);
         lvgl_port_unlock();
     }
-    display::backlight_on();
+    display::set_brightness(BRIGHTNESS_HIGH);
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));
+    ESP_ERROR_CHECK(button::start(on_button, nullptr));
 
     ESP_ERROR_CHECK(imu::start(on_orientation, &s_ui));
     ESP_ERROR_CHECK(esp_event_loop_create_default());
